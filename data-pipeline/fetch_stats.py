@@ -28,8 +28,28 @@ from nba_api.stats.static import teams as nba_teams_static
 OUTPUT_DIR = Path(__file__).parent.parent / 'data'
 MIRROR_DIR = Path(__file__).parent.parent / 'frontend' / 'public' / 'data'
 
-FIRST_SEASON  = 1946
+FIRST_SEASON   = 1946
 CURRENT_SEASON = 2024  # start year of 2024-25
+
+# stats.nba.com refuses requests without these headers
+NBA_HEADERS = {
+    'Host': 'stats.nba.com',
+    'User-Agent': (
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) '
+        'Gecko/20100101 Firefox/120.0'
+    ),
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'x-nba-stats-origin': 'stats',
+    'x-nba-stats-token': 'true',
+    'Referer': 'https://www.nba.com/',
+    'Connection': 'keep-alive',
+    'Pragma': 'no-cache',
+    'Cache-Control': 'no-cache',
+}
+
+TIMEOUT = 120  # seconds
 
 
 def min_minutes_for_season(start_year: int) -> int:
@@ -52,16 +72,30 @@ def safe(val, decimals=1):
         return None
 
 
+def call_with_retry(fn, retries=3, base_sleep=3):
+    """Call fn(), retrying up to `retries` times with exponential backoff."""
+    for attempt in range(retries):
+        try:
+            return fn()
+        except Exception as e:
+            if attempt == retries - 1:
+                raise
+            wait = base_sleep * (2 ** attempt)
+            print(f"  retry {attempt + 1}/{retries} after {wait}s ({e})", end=' ', flush=True)
+            time.sleep(wait)
+
+
 def fetch_league_avg(season: str) -> dict:
     """Fetch league-wide average OffRtg, DefRtg, Pace for era normalization."""
     try:
-        df = leaguedashteamstats.LeagueDashTeamStats(
+        df = call_with_retry(lambda: leaguedashteamstats.LeagueDashTeamStats(
             season=season,
             measure_type_detailed_defense='Advanced',
             per_mode_detailed='PerGame',
-            timeout=60,
-        ).get_data_frames()[0]
-        time.sleep(0.6)
+            headers=NBA_HEADERS,
+            timeout=TIMEOUT,
+        ).get_data_frames()[0])
+        time.sleep(1.5)
         return {
             'off_rtg': safe(df['OFF_RATING'].mean(), 1),
             'def_rtg': safe(df['DEF_RATING'].mean(), 1),
@@ -78,27 +112,27 @@ def fetch_season(season: str, output_dir: Path) -> bool:
         return True
 
     print(f"Fetching {season}…", end=' ', flush=True)
-    start_year    = int(season[:4])
-    min_min       = min_minutes_for_season(start_year)
+    start_year = int(season[:4])
+    min_min    = min_minutes_for_season(start_year)
 
     try:
-        # Advanced stats: OffRtg, DefRtg, PIE (hidden, used for simulation)
-        adv = leaguedashplayerstats.LeagueDashPlayerStats(
+        adv = call_with_retry(lambda: leaguedashplayerstats.LeagueDashPlayerStats(
             season=season,
             measure_type_detailed_defense='Advanced',
             per_mode_detailed='PerGame',
-            timeout=60,
-        ).get_data_frames()[0]
-        time.sleep(0.8)
+            headers=NBA_HEADERS,
+            timeout=TIMEOUT,
+        ).get_data_frames()[0])
+        time.sleep(1.5)
 
-        # Base per-game stats: PTS, REB, STL, BLK, PLUS_MINUS (displayed to user)
-        base = leaguedashplayerstats.LeagueDashPlayerStats(
+        base = call_with_retry(lambda: leaguedashplayerstats.LeagueDashPlayerStats(
             season=season,
             measure_type_detailed_defense='Base',
             per_mode_detailed='PerGame',
-            timeout=60,
-        ).get_data_frames()[0]
-        time.sleep(0.8)
+            headers=NBA_HEADERS,
+            timeout=TIMEOUT,
+        ).get_data_frames()[0])
+        time.sleep(1.5)
 
         league_avg = fetch_league_avg(season)
 
@@ -111,13 +145,8 @@ def fetch_season(season: str, output_dir: Path) -> bool:
     base = base[['PLAYER_ID', 'TEAM_ID', 'PTS', 'REB', 'STL', 'BLK', 'PLUS_MINUS', 'GP']]
 
     merged = adv.merge(base, on=['PLAYER_ID', 'TEAM_ID'], how='left', suffixes=('', '_b'))
-    merged['TOTAL_MIN'] = merged['MIN'] * merged['GP']
-    merged = merged[merged['TOTAL_MIN'] >= min_min]
-
-    # +/- in the NBA API per-game endpoint is the season TOTAL; divide by GP for per-game avg
-    # (Some seasons/versions return it already per-game — dividing by GP when GP>0 is safe either way
-    # if the API returns per-game, the result is unchanged when we multiply then divide.)
-    # To be safe: use PLUS_MINUS / GP as per-game average.
+    merged['TOTAL_MIN']  = merged['MIN'] * merged['GP']
+    merged               = merged[merged['TOTAL_MIN'] >= min_min]
     merged['PM_PER_GAME'] = merged['PLUS_MINUS'] / merged['GP'].clip(lower=1)
 
     team_id_to_name = {t['id']: t['full_name'] for t in nba_teams_static.get_teams()}
@@ -137,23 +166,20 @@ def fetch_season(season: str, output_dir: Path) -> bool:
             'gp':           int(row['GP']),
             'min_per_game': safe(row['MIN'], 1),
             'min_total':    safe(row['TOTAL_MIN'], 0),
-            # Display stats
             'pts':          safe(row['PTS'], 1),
             'reb':          safe(row['REB'], 1),
             'stl':          safe(row['STL'], 1),
             'blk':          safe(row['BLK'], 1),
             'plus_minus':   safe(row['PM_PER_GAME'], 1),
-            # Simulation stats (not shown in UI)
             'off_rtg':      safe(row['OFF_RATING'], 1),
             'def_rtg':      safe(row['DEF_RATING'], 1),
             'pie':          safe(row['PIE'], 4),
         })
 
-    # Sort by PIE so best players surface first
     for team in teams_data.values():
         team['players'].sort(key=lambda p: p['pie'] or 0, reverse=True)
 
-    output = {'season': season, 'league_avg': league_avg, 'teams': teams_data}
+    output  = {'season': season, 'league_avg': league_avg, 'teams': teams_data}
     payload = json.dumps(output, separators=(',', ':'))
     output_path.write_text(payload)
     MIRROR_DIR.mkdir(parents=True, exist_ok=True)
@@ -165,7 +191,7 @@ def fetch_season(season: str, output_dir: Path) -> bool:
 
 
 def build_index(output_dir: Path):
-    seasons: dict     = {}
+    seasons: dict      = {}
     team_seasons: dict = {}
 
     for f in sorted(output_dir.glob('*.json')):
@@ -204,7 +230,7 @@ if __name__ == '__main__':
     else:
         for year in range(args.start, args.end + 1):
             fetch_season(season_str(year), out)
-            time.sleep(1.5)
+            time.sleep(2)  # polite gap between seasons
 
     build_index(out)
     print("Done.")
