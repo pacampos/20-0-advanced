@@ -228,11 +228,62 @@ body {
   margin-top: 5px;
 }
 
+.picker-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.picker-rerolls {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-reroll {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 64px;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.btn-reroll:hover:not(:disabled) {
+  border-color: var(--orange);
+  background: #1d1008;
+}
+
+.btn-reroll:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.reroll-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.reroll-count {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--orange);
+  line-height: 1;
+}
+
 .picker-instruction {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
   text-align: right;
-  padding-top: 6px;
 }
 
 .picker-instruction strong {
