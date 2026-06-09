@@ -1,90 +1,84 @@
-function offRtgClass(v) {
-  if (v == null) return 'dim'
-  if (v >= 115) return 'good'
-  if (v >= 108) return 'ok'
-  return 'poor'
+import { useState, useEffect } from 'react'
+import { simulateSeason, recordTier } from '../utils/simulation'
+
+function fmt(v, dec = 1) {
+  return v != null ? v.toFixed(dec) : '—'
 }
 
-function defRtgClass(v) {
-  if (v == null) return 'dim'
-  if (v <= 105) return 'good'
-  if (v <= 112) return 'ok'
-  return 'poor'
+function plusMinusClass(v) {
+  if (v == null) return ''
+  return v >= 0 ? 'pm-positive' : 'pm-negative'
 }
 
-function avg(players, key) {
-  const vals = players.map(p => p[key]).filter(v => v != null)
-  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
-}
+export default function FinalTeam({ picks, onPlayAgain }) {
+  const [phase, setPhase] = useState('simulating') // 'simulating' | 'result'
+  const [result, setResult] = useState(null)
 
-export default function FinalTeam({ assignment, players, onPlayAgain }) {
-  const { teamName, season } = assignment
-  const avgOff = avg(players, 'off_rtg')
-  const avgDef = avg(players, 'def_rtg')
-  const avgPie = avg(players, 'pie')
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setResult(simulateSeason(picks))
+      setPhase('result')
+    }, 2200)
+    return () => clearTimeout(timer)
+  }, [])
+
+  const tier = result ? recordTier(result.wins) : null
+  const is820 = result?.wins === 82
 
   return (
     <div className="final-screen">
-      <div className="final-title">Your Squad</div>
-      <div className="final-source">{teamName} · {season} Season</div>
-
-      <div className="team-summary">
-        <div className="summary-stat">
-          <div className="ss-label">Avg OffRtg</div>
-          <div className={`ss-value ${offRtgClass(avgOff)}`}>
-            {avgOff != null ? avgOff.toFixed(1) : '—'}
-          </div>
-        </div>
-        <div className="summary-stat">
-          <div className="ss-label">Avg DefRtg ↓</div>
-          <div className={`ss-value ${defRtgClass(avgDef)}`}>
-            {avgDef != null ? avgDef.toFixed(1) : '—'}
-          </div>
-        </div>
-        <div className="summary-stat">
-          <div className="ss-label">Avg PIE</div>
-          <div className="ss-value gold">
-            {avgPie != null ? (avgPie * 100).toFixed(1) + '%' : '—'}
-          </div>
-        </div>
-      </div>
-
-      <div className="final-players">
-        {players.map((p, i) => (
-          <div className="final-player-row" key={p.id}>
-            <div className="player-name-col">
-              <span className="player-num">{i + 1}</span>
-              {p.name}
+      {/* Roster */}
+      <div className="final-roster">
+        {picks.map(({ player, season, teamName }, i) => (
+          <div className="final-row" key={player.id}>
+            <span className="final-num">{i + 1}</span>
+            <div className="final-player-info">
+              <span className="final-player-name">{player.name}</span>
+              <span className="final-player-origin">{teamName} · {season}</span>
             </div>
-            <div className="final-stat-col">
-              <div className="fs-label">OffRtg</div>
-              <div className={`fs-value ${offRtgClass(p.off_rtg)}`}>
-                {p.off_rtg != null ? p.off_rtg.toFixed(1) : '—'}
-              </div>
-            </div>
-            <div className="final-stat-col">
-              <div className="fs-label">DefRtg</div>
-              <div className={`fs-value ${defRtgClass(p.def_rtg)}`}>
-                {p.def_rtg != null ? p.def_rtg.toFixed(1) : '—'}
-              </div>
-            </div>
-            <div className="final-stat-col">
-              <div className="fs-label">PIE</div>
-              <div className="fs-value gold">
-                {p.pie != null ? (p.pie * 100).toFixed(1) + '%' : '—'}
-              </div>
-            </div>
-            <div className="final-stat-col">
-              <div className="fs-label">PTS/100</div>
-              <div className="fs-value white">
-                {p.pts_per100 != null ? p.pts_per100.toFixed(1) : '—'}
+            <div className="final-player-stats">
+              <div className="fp-stat"><span className="fp-label">PTS</span><span className="fp-val">{fmt(player.pts)}</span></div>
+              <div className="fp-stat"><span className="fp-label">REB</span><span className="fp-val">{fmt(player.reb)}</span></div>
+              <div className="fp-stat"><span className="fp-label">STL</span><span className="fp-val">{fmt(player.stl)}</span></div>
+              <div className="fp-stat"><span className="fp-label">BLK</span><span className="fp-val">{fmt(player.blk)}</span></div>
+              <div className="fp-stat">
+                <span className="fp-label">+/-</span>
+                <span className={`fp-val ${plusMinusClass(player.plus_minus)}`}>
+                  {player.plus_minus != null
+                    ? (player.plus_minus >= 0 ? '+' : '') + fmt(player.plus_minus)
+                    : '—'}
+                </span>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <button className="btn-primary" onClick={onPlayAgain}>PLAY AGAIN</button>
+      {/* Result area */}
+      {phase === 'simulating' && (
+        <div className="sim-loading">
+          <div className="sim-bar"><div className="sim-bar-fill" /></div>
+          <div className="sim-text">Simulating 82 games…</div>
+        </div>
+      )}
+
+      {phase === 'result' && result && (
+        <div className={`result-block${is820 ? ' undefeated' : ''}`}>
+          <div className="result-label">YOUR TEAM WENT</div>
+          <div className={`result-record ${tier.color}`}>
+            {result.wins}–{result.losses}
+          </div>
+          <div className="result-tier">{tier.label}</div>
+          <div className="result-meta">
+            Adj. Net Rtg: <strong>{result.netRtg > 0 ? '+' : ''}{result.netRtg}</strong>
+            &nbsp;&nbsp;·&nbsp;&nbsp;
+            Win%: <strong>{result.winPct}%</strong>
+          </div>
+          <button className="btn-primary result-replay" onClick={onPlayAgain}>
+            PLAY AGAIN
+          </button>
+        </div>
+      )}
     </div>
   )
 }

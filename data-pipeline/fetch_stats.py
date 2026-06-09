@@ -2,15 +2,16 @@
 Fetches NBA player stats for every available season and outputs one JSON file
 per season into the ../data/ directory.
 
-Stats collected (pace-adjusted):
-  - OFF_RATING  : points produced per 100 possessions (offensive)
-  - DEF_RATING  : points allowed per 100 possessions (defensive, lower = better)
-  - PIE         : Player Impact Estimate (overall)
-  - PTS/AST/REB/STL/BLK per 100 possessions
+Each player entry contains:
+  Display stats  — PTS, REB, STL, BLK, +/- per game (shown to user)
+  Hidden stats   — OffRtg, DefRtg, PIE per 100 possessions (used for simulation)
+
+Each season entry also contains:
+  league_avg     — era baseline for era-normalization across seasons
 
 Run:
   pip install -r requirements.txt
-  python fetch_stats.py                    # all seasons
+  python fetch_stats.py                    # all seasons (takes ~40 min)
   python fetch_stats.py --season 2016-17   # single season
   python fetch_stats.py --start 2000       # from 2000-01 onward
 """
@@ -21,23 +22,19 @@ import time
 import argparse
 from pathlib import Path
 
-from nba_api.stats.endpoints import leaguedashplayerstats
+from nba_api.stats.endpoints import leaguedashplayerstats, leaguedashteamstats
 from nba_api.stats.static import teams as nba_teams_static
 
 OUTPUT_DIR = Path(__file__).parent.parent / 'data'
-# Mirror path: also write to frontend/public/data/ so `npm run dev` works without a symlink
 MIRROR_DIR = Path(__file__).parent.parent / 'frontend' / 'public' / 'data'
 
-# nba_api has data back to ~1946-47 but advanced ratings are estimates pre-1973
-FIRST_SEASON = 1946
+FIRST_SEASON  = 1946
 CURRENT_SEASON = 2024  # start year of 2024-25
 
-# Minimum total minutes to be included (scales for older/shorter seasons)
+
 def min_minutes_for_season(start_year: int) -> int:
-    if start_year >= 1980:
-        return 500
-    if start_year >= 1960:
-        return 300
+    if start_year >= 1980: return 500
+    if start_year >= 1960: return 300
     return 180
 
 
@@ -55,6 +52,25 @@ def safe(val, decimals=1):
         return None
 
 
+def fetch_league_avg(season: str) -> dict:
+    """Fetch league-wide average OffRtg, DefRtg, Pace for era normalization."""
+    try:
+        df = leaguedashteamstats.LeagueDashTeamStats(
+            season=season,
+            measure_type_detailed_defense='Advanced',
+            per_mode_simple='PerGame',
+            timeout=60,
+        ).get_data_frames()[0]
+        time.sleep(0.6)
+        return {
+            'off_rtg': safe(df['OFF_RATING'].mean(), 1),
+            'def_rtg': safe(df['DEF_RATING'].mean(), 1),
+            'pace':    safe(df['PACE'].mean(), 1),
+        }
+    except Exception:
+        return {'off_rtg': 110.0, 'def_rtg': 110.0, 'pace': 96.0}
+
+
 def fetch_season(season: str, output_dir: Path) -> bool:
     output_path = output_dir / f"{season}.json"
     if output_path.exists():
@@ -62,11 +78,11 @@ def fetch_season(season: str, output_dir: Path) -> bool:
         return True
 
     print(f"Fetching {season}…", end=' ', flush=True)
-    start_year = int(season[:4])
-    min_min = min_minutes_for_season(start_year)
+    start_year    = int(season[:4])
+    min_min       = min_minutes_for_season(start_year)
 
     try:
-        # Advanced stats: OffRtg, DefRtg, PIE, USG%, TS%
+        # Advanced stats: OffRtg, DefRtg, PIE (hidden, used for simulation)
         adv = leaguedashplayerstats.LeagueDashPlayerStats(
             season=season,
             measure_type_detailed_defense='Advanced',
@@ -75,35 +91,41 @@ def fetch_season(season: str, output_dir: Path) -> bool:
         ).get_data_frames()[0]
         time.sleep(0.8)
 
-        # Per-100 base stats: PTS, AST, REB, STL, BLK, TOV
-        p100 = leaguedashplayerstats.LeagueDashPlayerStats(
+        # Base per-game stats: PTS, REB, STL, BLK, PLUS_MINUS (displayed to user)
+        base = leaguedashplayerstats.LeagueDashPlayerStats(
             season=season,
             measure_type_detailed_defense='Base',
-            per_mode_simple='Per100Possessions',
+            per_mode_simple='PerGame',
             timeout=60,
         ).get_data_frames()[0]
         time.sleep(0.8)
+
+        league_avg = fetch_league_avg(season)
 
     except Exception as e:
         print(f"ERROR: {e}")
         return False
 
-    # Keep only needed columns
-    adv = adv[['PLAYER_ID', 'PLAYER_NAME', 'TEAM_ID', 'TEAM_ABBREVIATION',
-                'GP', 'MIN', 'OFF_RATING', 'DEF_RATING', 'PIE', 'USG_PCT', 'TS_PCT']]
-    p100 = p100[['PLAYER_ID', 'TEAM_ID', 'PTS', 'AST', 'REB', 'STL', 'BLK', 'TOV']]
+    adv  = adv[['PLAYER_ID', 'PLAYER_NAME', 'TEAM_ID', 'TEAM_ABBREVIATION',
+                 'GP', 'MIN', 'OFF_RATING', 'DEF_RATING', 'PIE']]
+    base = base[['PLAYER_ID', 'TEAM_ID', 'PTS', 'REB', 'STL', 'BLK', 'PLUS_MINUS', 'GP']]
 
-    merged = adv.merge(p100, on=['PLAYER_ID', 'TEAM_ID'], how='left')
+    merged = adv.merge(base, on=['PLAYER_ID', 'TEAM_ID'], how='left', suffixes=('', '_b'))
     merged['TOTAL_MIN'] = merged['MIN'] * merged['GP']
     merged = merged[merged['TOTAL_MIN'] >= min_min]
 
-    # Build team name map from static list (covers current franchises)
+    # +/- in the NBA API per-game endpoint is the season TOTAL; divide by GP for per-game avg
+    # (Some seasons/versions return it already per-game — dividing by GP when GP>0 is safe either way
+    # if the API returns per-game, the result is unchanged when we multiply then divide.)
+    # To be safe: use PLUS_MINUS / GP as per-game average.
+    merged['PM_PER_GAME'] = merged['PLUS_MINUS'] / merged['GP'].clip(lower=1)
+
     team_id_to_name = {t['id']: t['full_name'] for t in nba_teams_static.get_teams()}
 
     teams_data: dict = {}
     for _, row in merged.iterrows():
-        tid = int(row['TEAM_ID'])
-        abbr = str(row['TEAM_ABBREVIATION'])
+        tid       = int(row['TEAM_ID'])
+        abbr      = str(row['TEAM_ABBREVIATION'])
         team_name = team_id_to_name.get(tid, abbr)
 
         if team_name not in teams_data:
@@ -115,26 +137,25 @@ def fetch_season(season: str, output_dir: Path) -> bool:
             'gp':           int(row['GP']),
             'min_per_game': safe(row['MIN'], 1),
             'min_total':    safe(row['TOTAL_MIN'], 0),
+            # Display stats
+            'pts':          safe(row['PTS'], 1),
+            'reb':          safe(row['REB'], 1),
+            'stl':          safe(row['STL'], 1),
+            'blk':          safe(row['BLK'], 1),
+            'plus_minus':   safe(row['PM_PER_GAME'], 1),
+            # Simulation stats (not shown in UI)
             'off_rtg':      safe(row['OFF_RATING'], 1),
             'def_rtg':      safe(row['DEF_RATING'], 1),
             'pie':          safe(row['PIE'], 4),
-            'usg_pct':      safe(row['USG_PCT'], 3),
-            'ts_pct':       safe(row['TS_PCT'], 3),
-            'pts_per100':   safe(row['PTS'], 1),
-            'ast_per100':   safe(row['AST'], 1),
-            'reb_per100':   safe(row['REB'], 1),
-            'stl_per100':   safe(row['STL'], 1),
-            'blk_per100':   safe(row['BLK'], 1),
         })
 
-    # Sort each team's players by PIE descending (best players shown first)
+    # Sort by PIE so best players surface first
     for team in teams_data.values():
         team['players'].sort(key=lambda p: p['pie'] or 0, reverse=True)
 
-    output = {'season': season, 'teams': teams_data}
+    output = {'season': season, 'league_avg': league_avg, 'teams': teams_data}
     payload = json.dumps(output, separators=(',', ':'))
     output_path.write_text(payload)
-    # Mirror for local dev
     MIRROR_DIR.mkdir(parents=True, exist_ok=True)
     (MIRROR_DIR / output_path.name).write_text(payload)
 
@@ -144,22 +165,22 @@ def fetch_season(season: str, output_dir: Path) -> bool:
 
 
 def build_index(output_dir: Path):
-    seasons: dict = {}
+    seasons: dict     = {}
     team_seasons: dict = {}
 
     for f in sorted(output_dir.glob('*.json')):
         if f.name == 'index.json':
             continue
-        data = json.loads(f.read_text())
+        data   = json.loads(f.read_text())
         season = data['season']
-        teams = list(data['teams'].keys())
+        teams  = list(data['teams'].keys())
         if not teams:
             continue
         seasons[season] = teams
         for t in teams:
             team_seasons.setdefault(t, []).append(season)
 
-    index = {'seasons': seasons, 'team_seasons': team_seasons}
+    index   = {'seasons': seasons, 'team_seasons': team_seasons}
     payload = json.dumps(index, separators=(',', ':'))
     (output_dir / 'index.json').write_text(payload)
     MIRROR_DIR.mkdir(parents=True, exist_ok=True)
@@ -183,7 +204,7 @@ if __name__ == '__main__':
     else:
         for year in range(args.start, args.end + 1):
             fetch_season(season_str(year), out)
-            time.sleep(1.5)  # be polite to stats.nba.com
+            time.sleep(1.5)
 
     build_index(out)
     print("Done.")

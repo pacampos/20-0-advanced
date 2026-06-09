@@ -1,14 +1,14 @@
 export default function StartScreen({ onPlay, loading, error }) {
   return (
     <div className="start-screen">
-      <div className="start-logo">20-0</div>
-      <div className="start-subtitle">Advanced Edition</div>
+      <div className="start-logo">82-0</div>
+      <div className="start-subtitle">Can your squad go undefeated?</div>
       <p className="start-tagline">
-        Get randomly assigned an NBA franchise and season. Pick 5 players
-        from that roster using pace-adjusted advanced stats. Build the best squad you can.
+        5 rounds. Each round reveals a random NBA franchise from any era.
+        Pick one player. Build the greatest team ever assembled.
       </p>
       <button className="btn-primary" onClick={onPlay} disabled={loading}>
-        {loading ? 'LOADING...' : 'PLAY'}
+        {loading ? 'LOADING…' : 'PLAY'}
       </button>
       {error && <div className="error-msg">{error}</div>}
     </div>
