@@ -25,6 +25,8 @@ from nba_api.stats.endpoints import leaguedashplayerstats
 from nba_api.stats.static import teams as nba_teams_static
 
 OUTPUT_DIR = Path(__file__).parent.parent / 'data'
+# Mirror path: also write to frontend/public/data/ so `npm run dev` works without a symlink
+MIRROR_DIR = Path(__file__).parent.parent / 'frontend' / 'public' / 'data'
 
 # nba_api has data back to ~1946-47 but advanced ratings are estimates pre-1973
 FIRST_SEASON = 1946
@@ -130,7 +132,11 @@ def fetch_season(season: str, output_dir: Path) -> bool:
         team['players'].sort(key=lambda p: p['pie'] or 0, reverse=True)
 
     output = {'season': season, 'teams': teams_data}
-    output_path.write_text(json.dumps(output, separators=(',', ':')))
+    payload = json.dumps(output, separators=(',', ':'))
+    output_path.write_text(payload)
+    # Mirror for local dev
+    MIRROR_DIR.mkdir(parents=True, exist_ok=True)
+    (MIRROR_DIR / output_path.name).write_text(payload)
 
     total_players = sum(len(t['players']) for t in teams_data.values())
     print(f"{len(teams_data)} teams, {total_players} players")
@@ -154,7 +160,10 @@ def build_index(output_dir: Path):
             team_seasons.setdefault(t, []).append(season)
 
     index = {'seasons': seasons, 'team_seasons': team_seasons}
-    (output_dir / 'index.json').write_text(json.dumps(index, separators=(',', ':')))
+    payload = json.dumps(index, separators=(',', ':'))
+    (output_dir / 'index.json').write_text(payload)
+    MIRROR_DIR.mkdir(parents=True, exist_ok=True)
+    (MIRROR_DIR / 'index.json').write_text(payload)
     print(f"Index: {len(seasons)} seasons, {len(team_seasons)} franchises")
 
 
