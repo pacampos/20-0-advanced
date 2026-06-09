@@ -58,7 +58,7 @@ def fetch_league_avg(season: str) -> dict:
         df = leaguedashteamstats.LeagueDashTeamStats(
             season=season,
             measure_type_detailed_defense='Advanced',
-            per_mode_simple='PerGame',
+            per_mode_detailed='PerGame',
             timeout=60,
         ).get_data_frames()[0]
         time.sleep(0.6)
@@ -86,7 +86,7 @@ def fetch_season(season: str, output_dir: Path) -> bool:
         adv = leaguedashplayerstats.LeagueDashPlayerStats(
             season=season,
             measure_type_detailed_defense='Advanced',
-            per_mode_simple='PerGame',
+            per_mode_detailed='PerGame',
             timeout=60,
         ).get_data_frames()[0]
         time.sleep(0.8)
@@ -95,7 +95,7 @@ def fetch_season(season: str, output_dir: Path) -> bool:
         base = leaguedashplayerstats.LeagueDashPlayerStats(
             season=season,
             measure_type_detailed_defense='Base',
-            per_mode_simple='PerGame',
+            per_mode_detailed='PerGame',
             timeout=60,
         ).get_data_frames()[0]
         time.sleep(0.8)
