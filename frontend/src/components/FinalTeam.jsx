@@ -70,7 +70,7 @@ export default function FinalTeam({ picks, onPlayAgain }) {
           </div>
           <div className="result-tier">{tier.label}</div>
           <div className="result-meta">
-            Adj. Net Rtg: <strong>{result.netRtg > 0 ? '+' : ''}{result.netRtg}</strong>
+            Avg BPM: <strong>{result.netRtg > 0 ? '+' : ''}{result.netRtg}</strong>
             &nbsp;&nbsp;·&nbsp;&nbsp;
             Win%: <strong>{result.winPct}%</strong>
           </div>

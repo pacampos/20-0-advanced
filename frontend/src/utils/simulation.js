@@ -1,7 +1,8 @@
-const BASELINE = 112.0 // Modern era reference point for era normalization
+// off_rtg = OBPM, def_rtg = -DBPM (both BPM-scale, 0 = league avg for that era)
+// league_avg = {0, 0} so the shift below is a no-op; netRtg = avg(OBPM + DBPM) = avg(BPM)
+const BASELINE = 0.0
 
 export function simulateSeason(picks) {
-  // Era-normalize each player relative to their season's league average, then average the 5
   const adjusted = picks.map(({ player, leagueAvg }) => {
     const lgOff = leagueAvg?.off_rtg ?? BASELINE
     const lgDef = leagueAvg?.def_rtg ?? BASELINE
@@ -14,11 +15,10 @@ export function simulateSeason(picks) {
   const teamOff = adjusted.reduce((s, p) => s + p.adj_off, 0) / adjusted.length
   const teamDef = adjusted.reduce((s, p) => s + p.adj_def, 0) / adjusted.length
 
-  // Net rating vs a baseline-average opponent
-  // Positive = team is better than average; scale of 6 calibrated so real elite teams (~+11 NetRtg)
-  // land around 70 wins and truly mythical teams (~+25) approach 82-0
+  // netRtg = avg(BPM) across 5 picks; divisor 3 calibrated for BPM scale
+  // (avg BPM 7 ≈ 74 wins; avg BPM 10 ≈ 79 wins with ~3% shot at 82-0)
   const netRtg = teamOff - teamDef
-  const winPct = 1 / (1 + Math.exp(-netRtg / 6))
+  const winPct = 1 / (1 + Math.exp(-netRtg / 3))
 
   let wins = 0
   for (let g = 0; g < 82; g++) {
