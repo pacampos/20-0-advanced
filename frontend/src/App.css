@@ -20,6 +20,8 @@ body {
   color: var(--text);
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   min-height: 100vh;
+  /* prevent horizontal scroll from large elements */
+  overflow-x: hidden;
 }
 
 /* ━━━━━━━━━━ START SCREEN ━━━━━━━━━━ */
@@ -31,17 +33,23 @@ body {
   justify-content: center;
   min-height: 100vh;
   gap: 24px;
-  padding: 24px;
+  /* padding-inline compensates for letter-spacing clipping on the left */
+  padding: 24px 32px;
   text-align: center;
 }
 
 .start-logo {
-  font-size: 112px;
+  /* clamp keeps it proportional on any screen width */
+  font-size: clamp(64px, 22vw, 112px);
   font-weight: 900;
-  letter-spacing: -8px;
+  /* letter-spacing scales down with viewport to prevent left-clip */
+  letter-spacing: clamp(-3px, -0.7vw, -8px);
+  /* indent by one letter-spacing unit so centering looks balanced */
+  padding-left: clamp(3px, 0.7vw, 8px);
   background: linear-gradient(135deg, var(--orange) 30%, var(--gold));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
   line-height: 1;
 }
 
@@ -100,9 +108,9 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  gap: 24px;
+  gap: 20px;
   background: radial-gradient(ellipse at 50% 40%, #1c0800 0%, var(--bg) 65%);
-  padding: 24px;
+  padding: 24px 16px;
 }
 
 .jackpot-title {
@@ -130,6 +138,8 @@ body {
   border-radius: 24px;
   border: 1px solid var(--border);
   box-shadow: 0 0 60px rgba(255, 107, 26, 0.08);
+  /* allow it to shrink on narrow screens */
+  max-width: 100%;
 }
 
 .jackpot-slot {
@@ -159,8 +169,11 @@ body {
 }
 
 .jackpot-value.team-value {
-  font-size: 38px;
-  letter-spacing: -1px;
+  font-size: 32px;
+  letter-spacing: -0.5px;
+  /* wrap long team names gracefully */
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .jackpot-value.spinning {
@@ -197,7 +210,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding: 24px;
+  padding: 20px 24px;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
@@ -459,7 +472,7 @@ body {
 
 .final-player-info {
   flex: 1;
-  min-width: 160px;
+  min-width: 140px;
 }
 
 .final-player-name {
@@ -616,12 +629,187 @@ body {
   margin-top: 16px;
 }
 
-@media (max-width: 640px) {
-  .start-logo { font-size: 80px; }
-  .jackpot-slots { flex-direction: column; gap: 16px; padding: 28px 32px; }
+/* ━━━━━━━━━━ RESPONSIVE — TABLET (≤ 768px) ━━━━━━━━━━ */
+
+@media (max-width: 768px) {
+  .picker-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+/* ━━━━━━━━━━ RESPONSIVE — MOBILE (≤ 480px) ━━━━━━━━━━ */
+
+@media (max-width: 480px) {
+  /* — Start screen — */
+  .start-screen {
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .start-subtitle {
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+
+  .start-tagline {
+    font-size: 14px;
+  }
+
+  .btn-primary {
+    padding: 14px 40px;
+    font-size: 15px;
+    width: 100%;
+    max-width: 280px;
+  }
+
+  /* — Jackpot — */
+  .jackpot-screen {
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .jackpot-title {
+    font-size: 20px;
+    letter-spacing: 2px;
+  }
+
+  .jackpot-slots {
+    flex-direction: column;
+    gap: 12px;
+    padding: 24px 20px;
+    width: 100%;
+    border-radius: 16px;
+  }
+
+  .jackpot-slot {
+    min-width: unset;
+    width: 100%;
+  }
+
   .jackpot-separator { display: none; }
-  .picker-header { flex-direction: column; }
-  .picker-instruction { text-align: left; }
-  .final-row { flex-direction: column; align-items: flex-start; }
-  .result-record { font-size: 64px; }
+
+  .jackpot-value {
+    font-size: clamp(36px, 11vw, 52px);
+  }
+
+  .jackpot-value.team-value {
+    font-size: clamp(18px, 5.5vw, 28px);
+  }
+
+  .jackpot-hint {
+    font-size: 12px;
+    text-align: center;
+    padding: 0 8px;
+  }
+
+  /* — Picker — */
+  .picker-screen {
+    padding: 16px;
+  }
+
+  .picker-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .picker-team-name {
+    font-size: 22px;
+    letter-spacing: -0.5px;
+  }
+
+  .picker-season {
+    font-size: 11px;
+  }
+
+  .picker-controls {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .picker-instruction {
+    text-align: left;
+    font-size: 12px;
+  }
+
+  .picker-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .picker-card {
+    padding: 14px 10px 10px;
+  }
+
+  .picker-name {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  .ps-value {
+    font-size: 14px;
+  }
+
+  .ps-label {
+    font-size: 8px;
+  }
+
+  .picker-meta {
+    font-size: 10px;
+  }
+
+  /* — Final screen — */
+  .final-screen {
+    padding: 16px 12px 32px;
+  }
+
+  .final-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .final-player-info {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .final-player-name {
+    font-size: 15px;
+  }
+
+  .final-player-stats {
+    flex-wrap: wrap;
+    gap: 0;
+  }
+
+  .fp-stat {
+    min-width: 38px;
+  }
+
+  .fp-val {
+    font-size: 14px;
+  }
+
+  /* — Result — */
+  .result-record {
+    font-size: clamp(56px, 18vw, 88px);
+    letter-spacing: clamp(-2px, -0.5vw, -4px);
+  }
+
+  .result-block {
+    padding: 28px 16px;
+  }
+
+  .result-tier {
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  .sim-bar {
+    width: min(280px, 80vw);
+  }
 }
