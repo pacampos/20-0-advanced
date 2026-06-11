@@ -210,62 +210,122 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding: 20px 24px;
-  max-width: 1200px;
+  padding: 20px 24px 24px;
+  max-width: 720px;
   margin: 0 auto;
   width: 100%;
 }
 
+/* Header row: team info left, progress+continue right */
 .picker-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
   gap: 12px;
+  margin-bottom: 14px;
 }
 
 .picker-team-name {
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 900;
-  letter-spacing: -1px;
-  line-height: 1;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
 }
 
 .picker-season {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--orange);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-top: 5px;
+  margin-top: 4px;
 }
 
-.picker-controls {
+.picker-header-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.picker-rerolls {
+.picker-progress {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+}
+
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.progress-dot.done   { background: var(--orange); opacity: 0.5; }
+.progress-dot.active { background: var(--orange); box-shadow: 0 0 7px rgba(255,107,26,0.7); }
+
+.progress-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 2px;
+  letter-spacing: 0.3px;
+}
+
+/* Continue button — top right */
+.btn-continue-top {
+  background: linear-gradient(135deg, var(--orange), #c24300);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.btn-continue-top:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+.btn-continue-top:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Toolbar: reroll group + search bar */
+.picker-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.picker-reroll-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.reroll-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-right: 2px;
 }
 
 .btn-reroll {
   background: var(--surface2);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  min-width: 64px;
   transition: border-color 0.12s, background 0.12s;
+  white-space: nowrap;
 }
 
 .btn-reroll:hover:not(:disabled) {
@@ -273,129 +333,83 @@ body {
   background: #1d1008;
 }
 
-.btn-reroll:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
+.btn-reroll:disabled { opacity: 0.35; cursor: not-allowed; }
 
-.reroll-label {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+.reroll-used {
+  font-size: 10px;
+  font-weight: 500;
   color: var(--muted);
-  font-weight: 700;
+  margin-left: 2px;
 }
 
-.reroll-count {
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--orange);
-  line-height: 1;
-}
-
-.picker-instruction {
+/* Search bar */
+.search-input {
+  flex: 1;
+  min-width: 140px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
   font-size: 13px;
-  color: var(--muted);
-  text-align: right;
-}
-
-.picker-instruction strong {
   color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
 }
 
-.picker-progress {
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus { border-color: #484848; }
+
+/* ━━━━━━━━━━ PLAYER LIST (single column) ━━━━━━━━━━ */
+
+.picker-list {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  margin-bottom: 20px;
 }
-
-.progress-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--border);
-}
-
-.progress-dot.done   { background: var(--orange); opacity: 0.5; }
-.progress-dot.active { background: var(--orange); box-shadow: 0 0 8px rgba(255,107,26,0.6); }
-
-.progress-label {
-  font-size: 12px;
-  color: var(--muted);
-  margin-left: 4px;
-  letter-spacing: 0.3px;
-}
-
-.picker-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 12px;
-}
-
-/* ━━━━━━━━━━ PLAYER CARD (picker) ━━━━━━━━━━ */
 
 .picker-card {
   background: var(--surface);
   border: 2px solid var(--border);
-  border-radius: 14px;
-  padding: 18px 16px 14px;
+  border-radius: 12px;
+  padding: 14px 16px;
   cursor: pointer;
-  transition: border-color 0.12s, transform 0.1s, box-shadow 0.12s;
-  position: relative;
-  overflow: hidden;
+  transition: border-color 0.12s, background 0.1s;
+  user-select: none;
 }
 
-.picker-card:hover:not(.locked-out) {
-  border-color: #484848;
-  transform: translateY(-2px);
-}
+.picker-card:hover { border-color: #3a3a3a; }
 
-.picker-card.locked-out {
-  opacity: 0.3;
-  cursor: default;
-  pointer-events: none;
-}
-
-.picker-card.confirming {
+.picker-card.selected {
   border-color: var(--orange);
-  box-shadow: 0 0 24px rgba(255, 107, 26, 0.35);
-  background: #1d1008;
+  background: #1a0d04;
 }
 
-.confirm-overlay {
-  position: absolute;
-  inset: 0;
+.picker-card-top {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  font-weight: 900;
-  letter-spacing: 3px;
-  color: var(--orange);
-  background: rgba(13, 7, 0, 0.7);
-  border-radius: 12px;
-  z-index: 2;
-  animation: confirm-pop 0.2s ease-out;
-}
-
-@keyframes confirm-pop {
-  from { opacity: 0; transform: scale(0.9); }
-  to   { opacity: 1; transform: scale(1); }
+  justify-content: space-between;
+  margin-bottom: 10px;
 }
 
 .picker-name {
   font-size: 15px;
   font-weight: 700;
-  line-height: 1.25;
-  margin-bottom: 14px;
   color: var(--text);
+  line-height: 1.2;
 }
 
+.picker-check {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--orange);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* Stats row inside each card */
 .picker-stats {
   display: flex;
   gap: 0;
-  margin-bottom: 12px;
 }
 
 .picker-stat {
@@ -403,11 +417,21 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   border-right: 1px solid var(--border);
 }
 
 .picker-stat:last-child { border-right: none; }
+
+/* GP/MPG column is narrower and muted */
+.picker-stat-meta { flex: 1.1; }
+
+.ps-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
 
 .ps-label {
   font-size: 9px;
@@ -417,20 +441,97 @@ body {
   font-weight: 700;
 }
 
-.ps-value {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--text);
-}
-
-.ps-value.pm-positive { color: #4CAF50; }
-.ps-value.pm-negative { color: #EF5350; }
-
-.picker-meta {
-  font-size: 11px;
+.picker-stat-meta .ps-value {
+  font-size: 13px;
   color: var(--muted);
-  text-align: center;
+  font-weight: 600;
 }
+
+.picker-stat-meta .ps-label {
+  font-size: 9px;
+}
+
+.picker-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.picker-list-spacer { height: 80px; }
+
+/* ━━━━━━━━━━ STICKY BOTTOM BAR ━━━━━━━━━━ */
+
+.picker-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+  background: #0f0f0f;
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.6);
+  z-index: 100;
+  animation: slide-up 0.2s ease-out;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.picker-bottom-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.picker-bottom-check {
+  color: var(--orange);
+  font-size: 15px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.picker-bottom-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.picker-bottom-pts {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-lock-in {
+  background: linear-gradient(135deg, var(--orange), #c24300);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 24px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.btn-lock-in:hover:not(:disabled) { opacity: 0.88; }
+.btn-lock-in:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ━━━━━━━━━━ FINAL SCREEN ━━━━━━━━━━ */
 
@@ -629,15 +730,6 @@ body {
   margin-top: 16px;
 }
 
-/* ━━━━━━━━━━ RESPONSIVE — TABLET (≤ 768px) ━━━━━━━━━━ */
-
-@media (max-width: 768px) {
-  .picker-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-}
-
 /* ━━━━━━━━━━ RESPONSIVE — MOBILE (≤ 480px) ━━━━━━━━━━ */
 
 @media (max-width: 480px) {
@@ -705,59 +797,49 @@ body {
 
   /* — Picker — */
   .picker-screen {
-    padding: 16px;
+    padding: 14px 14px 24px;
   }
 
   .picker-header {
-    flex-direction: column;
-    gap: 10px;
+    align-items: center;
   }
 
   .picker-team-name {
-    font-size: 22px;
-    letter-spacing: -0.5px;
+    font-size: 18px;
   }
 
   .picker-season {
     font-size: 11px;
   }
 
-  .picker-controls {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-  }
-
-  .picker-instruction {
-    text-align: left;
-    font-size: 12px;
-  }
-
-  .picker-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .picker-toolbar {
+    flex-wrap: wrap;
     gap: 8px;
   }
 
+  .search-input {
+    min-width: 100px;
+  }
+
   .picker-card {
-    padding: 14px 10px 10px;
+    padding: 12px 14px;
   }
 
   .picker-name {
-    font-size: 13px;
-    margin-bottom: 10px;
+    font-size: 14px;
   }
 
   .ps-value {
     font-size: 14px;
   }
 
-  .ps-label {
-    font-size: 8px;
+  .picker-bottom-bar {
+    padding: 10px 14px;
   }
 
-  .picker-meta {
-    font-size: 10px;
+  .btn-lock-in {
+    padding: 10px 18px;
+    font-size: 13px;
   }
 
   /* — Final screen — */
